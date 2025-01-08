@@ -51,8 +51,11 @@ export function UserSwitcher() {
           
           if (initialUser) {
             setCurrentUser(initialUser);
+            // Determine user role
+            const role = initialUser.email.includes('admin') ? 'admin' :
+                         initialUser.email.includes('agent') ? 'agent' : 'creator';
             // Dispatch event to notify other components
-            window.dispatchEvent(new CustomEvent(USER_CHANGE_EVENT, { detail: initialUser.id }));
+            window.dispatchEvent(new CustomEvent(USER_CHANGE_EVENT, { detail: { userId: initialUser.id, role } }));
           }
         }
       } catch (error) {
@@ -75,8 +78,11 @@ export function UserSwitcher() {
     if (user) {
       setCurrentUser(user);
       localStorage.setItem('currentUserId', userId);
+      // Determine user role
+      const role = user.email.includes('admin') ? 'admin' :
+                   user.email.includes('agent') ? 'agent' : 'creator';
       // Dispatch custom event for user change
-      window.dispatchEvent(new CustomEvent(USER_CHANGE_EVENT, { detail: userId }));
+      window.dispatchEvent(new CustomEvent(USER_CHANGE_EVENT, { detail: { userId, role } }));
     }
   };
 

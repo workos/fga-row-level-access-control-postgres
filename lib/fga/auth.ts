@@ -3,7 +3,7 @@ import { WorkOS } from '@workos-inc/node';
 const workos = new WorkOS(process.env.WORKOS_API_KEY!);
 
 type ResourceType = 'user' | 'organization' | 'ticket';
-type Relation = 'member' | 'admin' | 'agent' | 'creator' | 'assignee' | 'viewer' | 'organization';
+type Relation = 'member' | 'admin' | 'agent' | 'creator' | 'assignee' | 'viewer';
 
 interface Resource {
   resourceType: string;
@@ -46,18 +46,24 @@ export async function checkPermission(
 export async function listAccessibleResources(
   userId: string,
   resourceType: ResourceType,
-  relation: Relation
+  role: 'admin' | 'agent' | 'creator'
 ): Promise<string[]> {
   try {
-    console.log('Listing accessible resources:', { userId, resourceType, relation });
+    console.log('Listing accessible resources based on role:', { userId, resourceType, role });
+    
+    // For all roles, we use the viewer relation as defined in the model
+    const query = `select ticket where user:${userId} is viewer`;
+
+    console.log('Executing query:', query);
+
     const queryResponse = await workos.fga.query({
-      q: `select ${resourceType} where user:${userId} is ${relation}`,
+      q: query,
     });
 
     // The response is an array of objects with resourceId
     const resources = queryResponse.data as Resource[];
     const resourceIds = resources.map(resource => resource.resourceId);
-    console.log('Found accessible resources:', { userId, resourceType, relation, resourceIds });
+    console.log('Found accessible resources:', { userId, resourceType, role, resourceIds });
     return resourceIds;
   } catch (error) {
     console.error('Error listing accessible resources:', error);

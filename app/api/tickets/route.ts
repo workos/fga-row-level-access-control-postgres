@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { listAccessibleResources, checkPermission } from '@/lib/fga/auth';
 import { WorkOS, WarrantOp } from '@workos-inc/node';
-import { PrismaClient } from '@prisma/client';
 
 const workos = new WorkOS(process.env.WORKOS_API_KEY!);
 
@@ -19,111 +18,31 @@ const getCurrentUser = async (req: NextRequest) => {
   return user;
 };
 
-export async function GET(req: NextRequest) {
-  try {
-    console.log('\n=== Starting GET /api/tickets ===');
-    const user = await getCurrentUser(req);
-    
-    const searchParams = new URL(req.url).searchParams;
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const status = searchParams.get('status');
-    const priority = searchParams.get('priority');
-    
-    console.log('Query parameters:', { page, limit, status, priority });
-
-    // Get list of accessible ticket IDs from FGA
-    console.log('\nListing accessible resources:', {
-      userId: user.id,
-      resourceType: 'ticket',
-      relation: 'viewer'
-    });
-    
-    const accessibleTicketIds = await listAccessibleResources(user.id, 'ticket', 'viewer');
-    console.log('\nFound accessible resources:', {
-      userId: user.id,
-      resourceType: 'ticket',
-      relation: 'viewer',
-      resourceIds: accessibleTicketIds
-    });
-
-    // Query tickets with pagination and filters
-    const where = {
-      id: { in: accessibleTicketIds },
-      ...(status && { status: status as 'OPEN' | 'IN_PROGRESS' | 'CLOSED' }),
-      ...(priority && { priority: priority as 'LOW' | 'MEDIUM' | 'HIGH' }),
-    };
-    
-    console.log('\nQuerying tickets with filters:', where);
-
-    // Enable query logging
-    process.env.DEBUG = 'prisma:query';
-
-    const [tickets, total] = await Promise.all([
-      prisma.ticket.findMany({
-        where,
-        include: {
-          assignee: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.ticket.count({ where }),
-    ]);
-
-    console.log('\nFound tickets:', {
-      total,
-      pageSize: tickets.length,
-      ticketIds: tickets.map((t: { id: string }) => t.id),
-      ticketDetails: tickets.map((t: { 
-        id: string;
-        title: string;
-        status: string;
-        creatorId: string;
-        assigneeId: string | null;
-      }) => ({
-        id: t.id,
-        title: t.title,
-        status: t.status,
-        creatorId: t.creatorId,
-        assigneeId: t.assigneeId
-      }))
-    });
-
-    return NextResponse.json({
-      tickets: tickets.map((ticket: any) => ({
-        ...ticket,
-        creatorId: ticket.creator?.id,
-        creator: undefined, // Remove full creator object from response
-      })),
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error) {
-    console.error('\nError in GET /api/tickets:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    );
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get('userId');
+  
+  if (!userId) {
+    return NextResponse.json({ error: 'User ID required' }, { status: 400 });
   }
+
+  // Query WorkOS FGA to get tickets the user can view 
+  const response = await workos.fga.query({
+    q: `select ticket where user:${userId} is viewer`
+  });
+
+  // Get tickets user can view
+  const tickets = await prisma.ticket.findMany({
+    where: {
+      id: { in: response.data.map(obj => obj.resourceId) }
+    },
+    include: {
+      creator: true,
+      assignee: true,
+    }
+  });
+
+  return NextResponse.json(tickets);
 }
 
 export async function POST(req: NextRequest) {

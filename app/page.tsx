@@ -47,7 +47,9 @@ export default function Home() {
         const user = users.find((u: User) => u.id === userId);
         if (user) {
           setCurrentUser(user);
-          loadTickets(user.id);
+          const role = user.email.includes('admin') ? 'admin' :
+                      user.email.includes('agent') ? 'agent' : 'creator';
+          loadTickets(user.id, role);
         } else {
           setLoading(false);
         }
@@ -60,23 +62,19 @@ export default function Home() {
     loadCurrentUser();
   }, []);
 
-  const loadTickets = async (userId: string) => {
+  const loadTickets = async (userId: string, role: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/tickets', {
-        headers: {
-          'X-User-Id': userId
-        }
-      });
+      const response = await fetch(`/api/tickets?userId=${userId}`);
       
       if (!response.ok) {
         throw new Error('Failed to load tickets');
       }
       
       const data = await response.json();
-      setTickets(data.tickets || []);
+      setTickets(data || []);
     } catch (err) {
       console.error('Error loading tickets:', err);
       setError('Failed to load tickets');
@@ -88,8 +86,8 @@ export default function Home() {
   useEffect(() => {
     // Listen for user changes
     const handleUserChange = async (event: Event) => {
-      const userId = (event as CustomEvent).detail;
-      if (!userId) return;
+      const { userId, role } = (event as CustomEvent).detail;
+      if (!userId || !role) return;
 
       try {
         const response = await fetch('/api/users');
@@ -97,7 +95,7 @@ export default function Home() {
         const user = users.find((u: User) => u.id === userId);
         if (user) {
           setCurrentUser(user);
-          loadTickets(user.id);
+          loadTickets(user.id, role);
         }
       } catch (error) {
         console.error('Error handling user change:', error);
