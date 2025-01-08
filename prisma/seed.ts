@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const { WorkOS, WarrantOp } = require('@workos-inc/node');
+import { PrismaClient, Prisma } from '@prisma/client';
+import { WorkOS, WarrantOp } from '@workos-inc/node';
 
 const prisma = new PrismaClient();
 const workos = new WorkOS(process.env.WORKOS_API_KEY!);
@@ -57,7 +57,8 @@ async function main() {
         priority: 'HIGH',
         orgId: org.id,
         assigneeId: agent.id,
-      },
+        creatorId: customer.id,
+      } as Prisma.TicketUncheckedCreateInput,
     }),
     // Ticket created by customer
     prisma.ticket.create({
@@ -67,7 +68,8 @@ async function main() {
         status: 'OPEN',
         priority: 'LOW',
         orgId: org.id,
-      },
+        creatorId: customer.id,
+      } as Prisma.TicketUncheckedCreateInput,
     }),
     // Ticket in progress
     prisma.ticket.create({
@@ -78,16 +80,17 @@ async function main() {
         priority: 'HIGH',
         orgId: org.id,
         assigneeId: agent.id,
-      },
+        creatorId: customer.id,
+      } as Prisma.TicketUncheckedCreateInput,
     }),
   ]);
 
   // Set up FGA warrants for each ticket
   for (const ticket of tickets) {
-    const warrants = [
+    const warrants: { op: WarrantOp; resource: { resourceType: string; resourceId: string }; relation: string; subject: { resourceType: string; resourceId: string } }[] = [
       // Set organization relationship
       {
-        op: WarrantOp.Create,
+        op: 'create' as WarrantOp,
         resource: {
           resourceType: 'ticket',
           resourceId: ticket.id,
@@ -98,9 +101,9 @@ async function main() {
           resourceId: org.id,
         },
       },
-      // Set creator (using customer for all test tickets)
+      // Set creator
       {
-        op: WarrantOp.Create,
+        op: 'create' as WarrantOp,
         resource: {
           resourceType: 'ticket',
           resourceId: ticket.id,
@@ -116,7 +119,7 @@ async function main() {
     // Add assignee warrant if ticket is assigned
     if (ticket.assigneeId) {
       warrants.push({
-        op: WarrantOp.Create,
+        op: 'create' as WarrantOp,
         resource: {
           resourceType: 'ticket',
           resourceId: ticket.id,
@@ -128,6 +131,46 @@ async function main() {
         },
       });
     }
+
+    // Add organization role warrants
+    warrants.push(
+      {
+        op: 'create' as WarrantOp,
+        resource: {
+          resourceType: 'organization',
+          resourceId: org.id,
+        },
+        relation: 'admin',
+        subject: {
+          resourceType: 'user',
+          resourceId: admin.id,
+        },
+      },
+      {
+        op: 'create' as WarrantOp,
+        resource: {
+          resourceType: 'organization',
+          resourceId: org.id,
+        },
+        relation: 'agent',
+        subject: {
+          resourceType: 'user',
+          resourceId: agent.id,
+        },
+      },
+      {
+        op: 'create' as WarrantOp,
+        resource: {
+          resourceType: 'organization',
+          resourceId: org.id,
+        },
+        relation: 'member',
+        subject: {
+          resourceType: 'user',
+          resourceId: customer.id,
+        },
+      }
+    );
 
     await workos.fga.batchWriteWarrants(warrants);
   }

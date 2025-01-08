@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
 
     // Get list of accessible ticket IDs from FGA
     const accessibleTicketIds = await listAccessibleResources(user.id, 'ticket', 'viewer');
+    console.log('Accessible ticket IDs:', { userId: user.id, accessibleTicketIds });
 
     // Query tickets with pagination and filters
     const where = {
@@ -45,6 +46,13 @@ export async function GET(req: NextRequest) {
               email: true,
             },
           },
+          creator: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
         },
         skip: (page - 1) * limit,
         take: limit,
@@ -53,8 +61,14 @@ export async function GET(req: NextRequest) {
       prisma.ticket.count({ where }),
     ]);
 
+    console.log('Found tickets:', tickets.length);
+
     return NextResponse.json({
-      tickets,
+      tickets: tickets.map((ticket: any) => ({
+        ...ticket,
+        creatorId: ticket.creator?.id,
+        creator: undefined, // Remove full creator object from response
+      })),
       pagination: {
         page,
         limit,
@@ -83,8 +97,17 @@ export async function POST(req: NextRequest) {
         description: data.description,
         status: data.status || 'OPEN',
         priority: data.priority || 'MEDIUM',
-        orgId: user.orgId,
-        assigneeId: data.assigneeId,
+        organization: {
+          connect: { id: user.orgId }
+        },
+        creator: {
+          connect: { id: user.id }
+        },
+        ...(data.assigneeId && {
+          assignee: {
+            connect: { id: data.assigneeId }
+          }
+        })
       },
     });
 

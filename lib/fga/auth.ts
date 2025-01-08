@@ -35,7 +35,7 @@ export async function checkPermission(
     });
 
     const isAuthorized = checkResult.isAuthorized();
-    console.log('Permission check result:', { isAuthorized });
+    console.log('Permission check result:', { userId, resourceType, resourceId, relation, isAuthorized });
     return isAuthorized;
   } catch (error) {
     console.error('Error checking permission:', error);
@@ -57,7 +57,7 @@ export async function listAccessibleResources(
     // The response is an array of objects with resourceId
     const resources = queryResponse.data as Resource[];
     const resourceIds = resources.map(resource => resource.resourceId);
-    console.log('Found accessible resources:', resourceIds);
+    console.log('Found accessible resources:', { userId, resourceType, relation, resourceIds });
     return resourceIds;
   } catch (error) {
     console.error('Error listing accessible resources:', error);

@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const { WorkOS } = require('@workos-inc/node');
+import { PrismaClient } from '@prisma/client';
+import { WorkOS } from '@workos-inc/node';
 
 const prisma = new PrismaClient();
 const workos = new WorkOS(process.env.WORKOS_API_KEY);

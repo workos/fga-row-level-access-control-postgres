@@ -24,24 +24,43 @@ model User {
   name          String?
   orgId         String
   organization  Organization @relation(fields: [orgId], references: [id])
-  assignedTickets Ticket[] @relation("TicketAssignee")
+  assignedTickets Ticket[] @relation("AssignedTickets")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  createdTickets  Ticket[] @relation("CreatedTickets")
 }
 
 model Ticket {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   title       String
   description String
-  status      String   @default("OPEN")
-  priority    String   @default("MEDIUM")
+  status      TicketStatus @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
   orgId       String
   organization Organization @relation(fields: [orgId], references: [id])
   assigneeId  String?
-  assignee    User?    @relation("TicketAssignee", fields: [assigneeId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  assignee    User?       @relation("AssignedTickets", fields: [assigneeId], references: [id])
+  creatorId   String
+  creator     User        @relation("CreatedTickets", fields: [creatorId], references: [id])
 
   @@index([orgId])
   @@index([assigneeId])
+  @@index([creatorId])
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
 } 
