@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { checkPermission } from '@/lib/fga/auth';
+import { getCurrentUser } from '@/lib/auth';
 import { WorkOS, WarrantOp } from '@workos-inc/node';
 
 const workos = new WorkOS(process.env.WORKOS_API_KEY!);
-
-// Reuse getCurrentUser from the main tickets route
-const getCurrentUser = async (req: NextRequest) => {
-  const userId = req.headers.get('x-user-id');
-  if (!userId) {
-    throw new Error('Unauthorized');
-  }
-  return await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-};
 
 export async function GET(
   req: NextRequest,

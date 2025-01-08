@@ -1,22 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { checkPermission } from '@/lib/fga/auth';
+import { getCurrentUser } from '@/lib/auth';
 import { WorkOS, WarrantOp } from '@workos-inc/node';
 
 const workos = new WorkOS(process.env.WORKOS_API_KEY!);
-
-// Temporary mock auth - replace with real auth later
-const getCurrentUser = async (req: NextRequest) => {
-  const userId = req.headers.get('x-user-id');
-  console.log('Attempting to get user with ID:', userId);
-  if (!userId) {
-    console.log('No user ID found in headers');
-    throw new Error('Unauthorized');
-  }
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-  console.log('Found user:', { id: user.id, email: user.email, orgId: user.orgId });
-  return user;
-};
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
