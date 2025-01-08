@@ -8,11 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "setup:fga": "tsx scripts/setup-fga.ts",
-    "test:api": "tsx scripts/test-api.ts",
-    "build:css": "tailwindcss -i ./app/globals.css -o ./app/output.css",
-    "dev:css": "tailwindcss -i ./app/globals.css -o ./app/output.css --watch",
-    "predev": "npm run build:css",
-    "prebuild": "npm run build:css"
+    "test:api": "tsx scripts/test-api.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
