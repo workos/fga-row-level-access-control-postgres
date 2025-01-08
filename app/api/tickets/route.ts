@@ -2,38 +2,62 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { listAccessibleResources, checkPermission } from '@/lib/fga/auth';
 import { WorkOS, WarrantOp } from '@workos-inc/node';
+import { PrismaClient } from '@prisma/client';
 
 const workos = new WorkOS(process.env.WORKOS_API_KEY!);
 
 // Temporary mock auth - replace with real auth later
 const getCurrentUser = async (req: NextRequest) => {
-  // For testing, we'll use the user ID from the X-User-Id header
   const userId = req.headers.get('x-user-id');
+  console.log('Attempting to get user with ID:', userId);
   if (!userId) {
+    console.log('No user ID found in headers');
     throw new Error('Unauthorized');
   }
-  return await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  console.log('Found user:', { id: user.id, email: user.email, orgId: user.orgId });
+  return user;
 };
 
 export async function GET(req: NextRequest) {
   try {
+    console.log('\n=== Starting GET /api/tickets ===');
     const user = await getCurrentUser(req);
+    
     const searchParams = new URL(req.url).searchParams;
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
+    
+    console.log('Query parameters:', { page, limit, status, priority });
 
     // Get list of accessible ticket IDs from FGA
+    console.log('\nListing accessible resources:', {
+      userId: user.id,
+      resourceType: 'ticket',
+      relation: 'viewer'
+    });
+    
     const accessibleTicketIds = await listAccessibleResources(user.id, 'ticket', 'viewer');
-    console.log('Accessible ticket IDs:', { userId: user.id, accessibleTicketIds });
+    console.log('\nFound accessible resources:', {
+      userId: user.id,
+      resourceType: 'ticket',
+      relation: 'viewer',
+      resourceIds: accessibleTicketIds
+    });
 
     // Query tickets with pagination and filters
     const where = {
       id: { in: accessibleTicketIds },
-      ...(status && { status }),
-      ...(priority && { priority }),
+      ...(status && { status: status as 'OPEN' | 'IN_PROGRESS' | 'CLOSED' }),
+      ...(priority && { priority: priority as 'LOW' | 'MEDIUM' | 'HIGH' }),
     };
+    
+    console.log('\nQuerying tickets with filters:', where);
+
+    // Enable query logging
+    process.env.DEBUG = 'prisma:query';
 
     const [tickets, total] = await Promise.all([
       prisma.ticket.findMany({
@@ -61,7 +85,24 @@ export async function GET(req: NextRequest) {
       prisma.ticket.count({ where }),
     ]);
 
-    console.log('Found tickets:', tickets.length);
+    console.log('\nFound tickets:', {
+      total,
+      pageSize: tickets.length,
+      ticketIds: tickets.map((t: { id: string }) => t.id),
+      ticketDetails: tickets.map((t: { 
+        id: string;
+        title: string;
+        status: string;
+        creatorId: string;
+        assigneeId: string | null;
+      }) => ({
+        id: t.id,
+        title: t.title,
+        status: t.status,
+        creatorId: t.creatorId,
+        assigneeId: t.assigneeId
+      }))
+    });
 
     return NextResponse.json({
       tickets: tickets.map((ticket: any) => ({
@@ -77,7 +118,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error in GET /api/tickets:', error);
+    console.error('\nError in GET /api/tickets:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }
@@ -87,8 +128,18 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('\n=== Starting POST /api/tickets ===');
     const user = await getCurrentUser(req);
     const data = await req.json();
+    
+    console.log('Creating ticket:', {
+      title: data.title,
+      status: data.status || 'OPEN',
+      priority: data.priority || 'MEDIUM',
+      orgId: user.orgId,
+      creatorId: user.id,
+      assigneeId: data.assigneeId
+    });
 
     // Create the ticket first
     const ticket = await prisma.ticket.create({
@@ -110,6 +161,8 @@ export async function POST(req: NextRequest) {
         })
       },
     });
+    
+    console.log('\nCreated ticket:', ticket);
 
     // Create warrants in FGA
     const warrants = [
@@ -157,7 +210,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Create warrants
+    console.log('\nCreating warrants:', warrants);
     await workos.fga.batchWriteWarrants(warrants);
 
     // Verify warrants were created by checking permissions
@@ -167,6 +220,8 @@ export async function POST(req: NextRequest) {
       checkPermission(user.id, 'organization', user.orgId, 'member'),
     ]);
 
+    console.log('\nVerified permissions:', { isAdmin, isAgent, isMember });
+
     const hasOrgRole = isAdmin || isAgent || isMember;
     if (!hasOrgRole) {
       console.error('Failed to verify organization role:', { isAdmin, isAgent, isMember });
@@ -175,7 +230,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(ticket, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/tickets:', error);
+    console.error('\nError in POST /api/tickets:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }
