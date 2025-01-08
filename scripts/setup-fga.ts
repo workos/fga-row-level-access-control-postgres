@@ -40,7 +40,7 @@ async function main() {
     const [admin, agent, customer] = await Promise.all([
       prisma.user.findUniqueOrThrow({ where: { email: 'admin@demo.com' } }),
       prisma.user.findUniqueOrThrow({ where: { email: 'agent@demo.com' } }),
-      prisma.user.findUniqueOrThrow({ where: { email: 'customer@demo.com' } }),
+      prisma.user.findUniqueOrThrow({ where: { email: 'customer1@demo.com' } }),
     ]);
 
     // Set up initial warrants

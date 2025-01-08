@@ -16,17 +16,44 @@ The application demonstrates two common patterns for implementing row-level secu
 ### Pre-filtering Example (Used in this demo)
 
 ```typescript
-// Get list of accessible ticket IDs from FGA
-const accessibleTicketIds = await listAccessibleResources(userId, 'ticket', 'viewer');
+// Query WorkOS FGA to get tickets the user can view 
+const response = await workos.fga.query({
+  q: `select ticket where user:${userId} is viewer`
+});
 
-// Use these IDs in your SQL query
+// Map the response to an array of ticket IDs the user can view
+const accessibleTicketIds = response.data.map(obj => obj.resourceId);
+
+// Get tickets user can view
 const tickets = await prisma.ticket.findMany({
   where: {
-    id: { in: accessibleTicketIds },
-    // ... other filters
+    id: { in: accessibleTicketIds }
+  },
+  include: {
+    creator: true,
+    assignee: true,
   }
 });
 ```
+
+Under the hood, this Prisma query boils down to the following SQL:
+
+```sql
+SELECT 
+  t.*,
+  creator.id as "creator_id",
+  creator.name as "creator_name",
+  creator.email as "creator_email",
+  assignee.id as "assignee_id",
+  assignee.name as "assignee_name",
+  assignee.email as "assignee_email"
+FROM "Ticket" t
+LEFT JOIN "User" creator ON t.creator_id = creator.id
+LEFT JOIN "User" assignee ON t.assignee_id = assignee.id
+WHERE t.id IN ('ticket_id1', 'ticket_id2', /* ... ids from FGA query */)
+```
+
+This demonstrates how FGA's authorization rules are ultimately enforced through a simple `WHERE IN` clause at the database level.
 
 ### Post-filtering Alternative
 
@@ -153,21 +180,33 @@ The FGA setup script (`npm run setup:fga`) creates this authorization model in y
    POSTGRES_URL_NON_POOLING=your_non_pooling_url
    ```
 
-4. Initialize the database:
+4. Set up the database and permissions (run these commands in order):
    ```bash
+   # Push the database schema to your Postgres instance
    npx prisma db push
+
+   # Seed the database with test organizations, users, and tickets
    npx prisma db seed
+
+   # Set up FGA authorization model and initial permissions
+   npm run setup:fga
    ```
 
-5. Set up FGA resources and initial permissions:
+5. Verify the setup by running the API tests:
    ```bash
-   npm run setup:fga
+   npm run test:api
+   ```
+   You should see a series of ✅ checks indicating that all permissions are working correctly. For detailed test output, run:
+   ```bash
+   DEBUG=true npm run test:api
    ```
 
 6. Start the development server:
    ```bash
    npm run dev
    ```
+
+The application will be available at http://localhost:3000. You can switch between different user roles (Admin, Agent, Customer) to see how permissions affect what each user can see and do.
 
 ## Learn More
 
