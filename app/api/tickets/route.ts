@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { checkPermission } from '@/lib/fga/auth';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/fga/auth';
 import { WorkOS, WarrantOp } from '@workos-inc/node';
 
 const workos = new WorkOS(process.env.WORKOS_API_KEY!);
