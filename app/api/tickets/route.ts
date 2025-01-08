@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { listAccessibleResources, checkPermission } from '@/lib/fga/auth';
+import { checkPermission } from '@/lib/fga/auth';
 import { WorkOS, WarrantOp } from '@workos-inc/node';
 
 const workos = new WorkOS(process.env.WORKOS_API_KEY!);
@@ -31,10 +31,13 @@ export async function GET(request: Request) {
     q: `select ticket where user:${userId} is viewer`
   });
 
+  // Map the response to an array of ticket IDs the user can view
+  const accessibleTicketIds = response.data.map(obj => obj.resourceId);
+
   // Get tickets user can view
   const tickets = await prisma.ticket.findMany({
     where: {
-      id: { in: response.data.map(obj => obj.resourceId) }
+      id: { in: accessibleTicketIds }
     },
     include: {
       creator: true,

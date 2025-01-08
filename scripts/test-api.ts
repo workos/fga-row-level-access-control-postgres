@@ -3,18 +3,29 @@ import { WorkOS } from '@workos-inc/node';
 
 const prisma = new PrismaClient();
 const workos = new WorkOS(process.env.WORKOS_API_KEY);
-const API_BASE = 'http://localhost:3001';
+const API_BASE = 'http://localhost:3000';
+const DEBUG = process.env.DEBUG === 'true';
+
+const CHECK = '✅';
+const CROSS = '❌';
+
+function log(message: string, success: boolean, details?: any) {
+  console.log(`${success ? CHECK : CROSS} ${message}`);
+  if (DEBUG && details) {
+    console.log(JSON.stringify(details, null, 2));
+  }
+}
 
 async function main() {
   try {
     // 1. Get our test users from the database
-    const [admin, agent, customer] = await Promise.all([
+    const [admin, agent, customer1] = await Promise.all([
       prisma.user.findUniqueOrThrow({ where: { email: 'admin@demo.com' } }),
       prisma.user.findUniqueOrThrow({ where: { email: 'agent@demo.com' } }),
-      prisma.user.findUniqueOrThrow({ where: { email: 'customer@demo.com' } }),
+      prisma.user.findUniqueOrThrow({ where: { email: 'customer1@demo.com' } }),
     ]);
 
-    console.log('Test users loaded:', { admin, agent, customer });
+    log('Loaded test users', true, { admin, agent, customer1 });
 
     // 2. Create a test ticket
     const response = await fetch(`${API_BASE}/api/tickets`, {
@@ -27,6 +38,7 @@ async function main() {
         title: 'Test Ticket',
         description: 'This is a test ticket',
         priority: 'HIGH',
+        orgId: admin.orgId,
       }),
     });
 
@@ -36,10 +48,10 @@ async function main() {
     }
 
     const ticket = await response.json();
-    console.log('Created test ticket:', ticket);
+    log('Created test ticket as admin', true, ticket);
 
     // 3. Test viewing the ticket with different users
-    for (const user of [admin, agent, customer]) {
+    for (const user of [admin, agent, customer1]) {
       const viewResponse = await fetch(`${API_BASE}/api/tickets/${ticket.id}`, {
         headers: {
           'X-User-Id': user.id,
@@ -47,9 +59,8 @@ async function main() {
       });
 
       const viewResult = viewResponse.ok ? await viewResponse.json() : await viewResponse.text();
-      console.log(`View ticket as ${user.email}:`, {
+      log(`Viewing ticket as ${user.name}`, viewResponse.ok, {
         status: viewResponse.status,
-        ok: viewResponse.ok,
         result: viewResult,
       });
     }
@@ -67,21 +78,20 @@ async function main() {
     });
 
     const updateResult = updateResponse.ok ? await updateResponse.json() : await updateResponse.text();
-    console.log('Update ticket as agent:', {
+    log('Updating ticket status as agent', updateResponse.ok, {
       status: updateResponse.status,
-      ok: updateResponse.ok,
       result: updateResult,
     });
 
     // 5. Test listing tickets with filters
-    const listResponse = await fetch(`${API_BASE}/api/tickets?status=IN_PROGRESS`, {
+    const listResponse = await fetch(`${API_BASE}/api/tickets?userId=${admin.id}&status=IN_PROGRESS`, {
       headers: {
-        'X-User-Id': admin.id,
+        'Content-Type': 'application/json',
       },
     });
 
     const tickets = await listResponse.json();
-    console.log('List filtered tickets:', tickets);
+    log('Listing filtered tickets as admin', listResponse.ok, tickets);
 
     // 6. Clean up - delete the test ticket
     const deleteResponse = await fetch(`${API_BASE}/api/tickets/${ticket.id}`, {
@@ -92,14 +102,13 @@ async function main() {
     });
 
     const deleteResult = deleteResponse.ok ? null : await deleteResponse.text();
-    console.log('Delete ticket:', {
-      status: deleteResponse.status,
-      ok: deleteResponse.ok,
-      ...(deleteResult && { error: deleteResult }),
-    });
+    log('Deleting test ticket as admin', deleteResponse.ok, deleteResult);
+
+    console.log('\nAll tests completed!');
 
   } catch (error) {
-    console.error('Test failed:', error);
+    console.error('\n❌ Test suite failed:', error);
+    process.exit(1);
   } finally {
     await prisma.$disconnect();
   }

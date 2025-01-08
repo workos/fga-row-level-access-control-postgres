@@ -49,12 +49,44 @@ const accessibleTickets = await Promise.all(
 
 Pre-filtering is generally more efficient as it reduces the number of database queries and permission checks.
 
+## Testing the Application
+
+The repository includes API tests that demonstrate how the permission system works in practice. The tests verify that:
+
+1. Admins can create, view, and delete tickets
+2. Agents can view and update tickets
+3. Customers can view tickets in their organization
+4. Permission checks are enforced correctly
+
+Run the tests with:
+```bash
+npm run test:api
+```
+
+The test output uses ✅ and ❌ indicators to clearly show which tests pass or fail:
+```
+✅ Loaded test users
+✅ Created test ticket as admin
+✅ Viewing ticket as Admin User
+✅ Viewing ticket as Support Agent
+✅ Viewing ticket as Alice (Customer)
+✅ Updating ticket status as agent
+✅ Listing filtered tickets as admin
+✅ Deleting test ticket as admin
+
+All tests completed!
+```
+
+For detailed response data and debugging, run the tests in debug mode:
+```bash
+DEBUG=true npm run test:api
+```
+
 ## Features
 
 - Role-based access control (Admin, Agent, Customer)
 - Row-level security on tickets
 - Permission inheritance (e.g., admins automatically get viewer access)
-- REST API endpoints with permission checks
 - Integration with Vercel Postgres
 
 ## Authorization Model
@@ -84,6 +116,18 @@ type organization
     relation member [user]
 ```
 
+This model establishes a hierarchical permission system where:
+1. Users can be admins, agents, or members of an organization
+2. Tickets belong to organizations (via the parent relation)
+3. Users can view tickets if they:
+   - Created the ticket
+   - Are assigned to the ticket
+   - Are an admin of the organization the ticket belongs to
+   - Are an agent of the organization the ticket belongs to
+   - Are a member of the organization the ticket belongs to
+
+The FGA setup script (`npm run setup:fga`) creates this authorization model in your WorkOS account and establishes the initial relationships between users, organizations, and tickets. This is a crucial step as it defines the "rules" that WorkOS FGA will use to determine who can access what.
+
 ## Getting Started
 
 1. Clone the repository:
@@ -99,7 +143,7 @@ type organization
 
 3. Set up your environment variables in `.env`:
    ```
-   # WorkOS credentials
+   # WorkOS credentials (get these from https://dashboard.workos.com/get-started)
    WORKOS_API_KEY=your_api_key
    WORKOS_CLIENT_ID=your_client_id
 
@@ -124,29 +168,6 @@ type organization
    ```bash
    npm run dev
    ```
-
-## API Routes
-
-- `GET /api/tickets`: List accessible tickets (pre-filtered)
-- `POST /api/tickets`: Create a new ticket
-- `GET /api/tickets/[id]`: Get a specific ticket
-- `PATCH /api/tickets/[id]`: Update a ticket
-- `DELETE /api/tickets/[id]`: Delete a ticket
-
-## Testing
-
-The repository includes API tests that demonstrate the permission system:
-
-```bash
-npm run test:api
-```
-
-This will:
-1. Create a test ticket
-2. Test viewing the ticket with different user roles
-3. Test updating the ticket
-4. Test listing tickets with filters
-5. Clean up by deleting the test ticket
 
 ## Learn More
 
