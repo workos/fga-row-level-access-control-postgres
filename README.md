@@ -25,6 +25,8 @@ The application demonstrates two common patterns for implementing row-level secu
 
 ### Pre-filtering Example (Used in this demo)
 
+You can find this implementation in `app/api/tickets/route.ts`:
+
 ```typescript
 // Query WorkOS FGA to get tickets the user can view 
 const response = await workos.fga.query({
