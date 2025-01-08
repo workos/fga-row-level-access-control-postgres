@@ -1,0 +1,22 @@
+version 0.2
+
+type user
+
+type organization
+  relation member [user]
+  relation admin [user]
+  relation agent [user]
+
+type ticket
+  relation parent [organization]
+  relation creator [user]
+  relation assignee [user]
+  relation viewer [user]
+
+  inherit viewer if
+    any_of
+      relation creator
+      relation assignee
+      relation admin on parent [organization]
+      relation agent on parent [organization]
+      relation member on parent [organization] 
