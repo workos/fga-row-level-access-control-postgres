@@ -13,24 +13,61 @@ export const USER_CHANGE_EVENT = 'user-changed';
 export function UserSwitcher() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load test users
+    let mounted = true;
+    
     const loadUsers = async () => {
-      const response = await fetch('/api/users');
-      const data = await response.json();
-      setUsers(data);
-      // Default to admin user if no user is selected
-      const savedUserId = localStorage.getItem('currentUserId');
-      const initialUser = savedUserId 
-        ? data.find((user: User) => user.id === savedUserId)
-        : data.find((user: User) => user.email === 'admin@demo.com');
-      if (initialUser) {
-        setCurrentUser(initialUser);
-        localStorage.setItem('currentUserId', initialUser.id);
+      try {
+        console.log('Loading users...');
+        const response = await fetch('/api/users');
+        const data = await response.json();
+        console.log('Loaded users:', data);
+        
+        if (!mounted) return;
+        
+        if (Array.isArray(data) && data.length > 0) {
+          setUsers(data);
+          
+          // Get saved user ID or default to admin
+          const savedUserId = localStorage.getItem('currentUserId');
+          console.log('Saved user ID:', savedUserId);
+          
+          // Try to find saved user, if not found or no saved ID, default to admin
+          let initialUser = savedUserId 
+            ? data.find((user: User) => user.id === savedUserId)
+            : null;
+            
+          // If no saved user found, default to admin
+          if (!initialUser) {
+            initialUser = data.find((user: User) => user.email === 'admin@demo.com');
+            if (initialUser) {
+              localStorage.setItem('currentUserId', initialUser.id);
+            }
+          }
+          
+          console.log('Initial user:', initialUser);
+          
+          if (initialUser) {
+            setCurrentUser(initialUser);
+            // Dispatch event to notify other components
+            window.dispatchEvent(new CustomEvent(USER_CHANGE_EVENT, { detail: initialUser.id }));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load users:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
+
     loadUsers();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleUserChange = (userId: string) => {
@@ -43,7 +80,13 @@ export function UserSwitcher() {
     }
   };
 
-  if (!currentUser) return null;
+  if (loading) {
+    return <div className="flex items-center gap-4 p-4 bg-white border-b">Loading users...</div>;
+  }
+
+  if (!currentUser || users.length === 0) {
+    return <div className="flex items-center gap-4 p-4 bg-white border-b">No users available</div>;
+  }
 
   return (
     <div className="flex items-center gap-4 p-4 bg-white border-b">

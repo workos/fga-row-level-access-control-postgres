@@ -8,11 +8,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "setup:fga": "ts-node scripts/setup-fga.ts",
-    "test:api": "ts-node scripts/test-api.ts"
+    "setup:fga": "tsx scripts/setup-fga.ts",
+    "test:api": "tsx scripts/test-api.ts"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

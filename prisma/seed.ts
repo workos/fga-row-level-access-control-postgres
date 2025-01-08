@@ -20,6 +20,7 @@ async function main() {
     where: { email: 'admin@demo.com' },
     update: {},
     create: {
+      id: 'user_admin',
       email: 'admin@demo.com',
       name: 'Admin User',
       orgId: org.id,
@@ -30,6 +31,7 @@ async function main() {
     where: { email: 'agent@demo.com' },
     update: {},
     create: {
+      id: 'user_agent',
       email: 'agent@demo.com',
       name: 'Support Agent',
       orgId: org.id,
@@ -40,6 +42,7 @@ async function main() {
     where: { email: 'customer@demo.com' },
     update: {},
     create: {
+      id: 'user_customer',
       email: 'customer@demo.com',
       name: 'Customer User',
       orgId: org.id,

@@ -35,56 +35,74 @@ export default function Home() {
   // Load current user
   useEffect(() => {
     const loadCurrentUser = async () => {
-      const userId = localStorage.getItem('currentUserId');
-      if (!userId) return;
+      try {
+        const userId = localStorage.getItem('currentUserId');
+        if (!userId) {
+          setLoading(false);
+          return;
+        }
 
-      const response = await fetch('/api/users');
-      const users = await response.json();
-      const user = users.find((u: User) => u.id === userId);
-      if (user) {
-        setCurrentUser(user);
+        const response = await fetch('/api/users');
+        const users = await response.json();
+        const user = users.find((u: User) => u.id === userId);
+        if (user) {
+          setCurrentUser(user);
+          loadTickets(user.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Failed to load user:', error);
+        setError('Failed to load user');
+        setLoading(false);
       }
     };
     loadCurrentUser();
   }, []);
 
-  const loadTickets = async () => {
+  const loadTickets = async (userId: string) => {
     try {
       setLoading(true);
       setError(null);
-      const userId = localStorage.getItem('currentUserId');
-      if (!userId) return;
 
       const response = await fetch('/api/tickets', {
         headers: {
           'X-User-Id': userId
         }
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load tickets');
+      }
+      
       const data = await response.json();
       setTickets(data.tickets || []);
     } catch (err) {
+      console.error('Error loading tickets:', err);
       setError('Failed to load tickets');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadTickets();
-    
     // Listen for user changes
-    const handleUserChange = async () => {
-      const userId = localStorage.getItem('currentUserId');
+    const handleUserChange = async (event: Event) => {
+      const userId = (event as CustomEvent).detail;
       if (!userId) return;
 
-      const response = await fetch('/api/users');
-      const users = await response.json();
-      const user = users.find((u: User) => u.id === userId);
-      if (user) {
-        setCurrentUser(user);
+      try {
+        const response = await fetch('/api/users');
+        const users = await response.json();
+        const user = users.find((u: User) => u.id === userId);
+        if (user) {
+          setCurrentUser(user);
+          loadTickets(user.id);
+        }
+      } catch (error) {
+        console.error('Error handling user change:', error);
+        setError('Failed to update user');
       }
-      loadTickets();
     };
     
     window.addEventListener(USER_CHANGE_EVENT, handleUserChange);
@@ -109,15 +127,21 @@ export default function Home() {
           </div>
           
           {loading && (
-            <p className="text-gray-500">Loading tickets...</p>
+            <div className="text-center py-8">
+              <p className="text-gray-500">Loading tickets...</p>
+            </div>
           )}
 
           {error && (
-            <p className="text-red-500">{error}</p>
+            <div className="text-center py-8">
+              <p className="text-red-500">{error}</p>
+            </div>
           )}
 
           {!loading && !error && tickets.length === 0 && (
-            <p className="text-gray-500">No tickets found.</p>
+            <div className="text-center py-8">
+              <p className="text-gray-500">No tickets found.</p>
+            </div>
           )}
 
           <div className="grid gap-6">
