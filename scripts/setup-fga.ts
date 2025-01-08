@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { WorkOS, WarrantOp } from '@workos-inc/node';
+import { WorkOS, WarrantOp, ResourceOp } from '@workos-inc/node';
 
 const prisma = new PrismaClient();
 const workos = new WorkOS(process.env.WORKOS_API_KEY!);
@@ -8,7 +8,7 @@ async function main() {
   try {
     // First create the resource types with their relations
     await workos.fga.batchWriteResources({
-      op: WarrantOp.Create,
+      op: ResourceOp.Create,
       resources: [
         {
           resource: {
