@@ -8,7 +8,10 @@ export function VisibilityReason({ role, isCreator, isAssignee }: VisibilityReas
   let reason = '';
   let color = '';
 
-  if (role === 'ADMIN') {
+  if (role === 'CUSTOMER') {
+    reason = 'Customers can only see tickets they created';
+    color = 'bg-gray-50 text-gray-700 border-gray-200';
+  } else if (role === 'ADMIN') {
     reason = 'Visible as Admin';
     color = 'bg-purple-50 text-purple-700 border-purple-200';
   } else if (role === 'AGENT') {

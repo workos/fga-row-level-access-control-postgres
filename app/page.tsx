@@ -107,7 +107,11 @@ export default function Home() {
     return () => window.removeEventListener(USER_CHANGE_EVENT, handleUserChange);
   }, []);
 
-  const role = currentUser?.email.split('@')[0].toUpperCase();
+  const role = currentUser?.email.includes('admin')
+    ? 'ADMIN'
+    : currentUser?.email.includes('agent')
+    ? 'AGENT'
+    : 'CUSTOMER';
 
   return (
     <main className="min-h-screen bg-gray-50">
