@@ -1,5 +1,5 @@
-import './output.css';
 import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Row-Level Security Demo with WorkOS FGA',
