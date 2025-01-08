@@ -2,9 +2,19 @@
 
 ![FGA row-level access control with Postgres](./public/hero.webp)
 
-This example application demonstrates how to implement row-level security in a Next.js application using [WorkOS FGA (Fine-Grained Authorization)](https://workos.com/fine-grained-authorization) and Postgres. 
+This example application demonstrates how to implement row-level security in a Next.js support ticketing application using [WorkOS FGA (Fine-Grained Authorization)](https://workos.com/fine-grained-authorization) and Postgres. 
 
 It showcases a simple ticket management system where users have different roles (admin, agent, customer) and permissions are enforced at the row level.
+
+For example, admins can view all tickets...
+
+![FGA row-level access control with Postgres](./public/admin-view.webp)
+
+but customers can only view tickets they created... 
+
+![FGA row-level access control with Postgres](./public/customer-view.webp)
+
+and support agents can only view tickets they are assigned and those within their organization.
 
 ## Overview
 
@@ -50,7 +60,7 @@ SELECT
 FROM "Ticket" t
 LEFT JOIN "User" creator ON t.creator_id = creator.id
 LEFT JOIN "User" assignee ON t.assignee_id = assignee.id
-WHERE t.id IN ('ticket_id1', 'ticket_id2', /* ... ids from FGA query */)
+WHERE t.id IN ('ticket_id1', 'ticket_id2', /* ... allowed ids from FGA query */)
 ```
 
 This demonstrates how FGA's authorization rules are ultimately enforced through a simple `WHERE IN` clause at the database level.
@@ -210,7 +220,7 @@ The application will be available at http://localhost:3000. You can switch betwe
 
 ## Learn More
 
-- [WorkOS FGA Documentation](https://workos.com/docs/fine-grained-authorization)
+- [WorkOS FGA Documentation](https://workos.com/docs/fga)
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Prisma Documentation](https://www.prisma.io/docs)
 
