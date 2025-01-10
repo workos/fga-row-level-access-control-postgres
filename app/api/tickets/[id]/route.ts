@@ -8,11 +8,12 @@ const workos = new WorkOS(process.env.WORKOS_API_KEY!);
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser(req);
-    const ticketId = params.id;
+
+    const { id: ticketId } = await params;
 
     // Check if user has permission to view this ticket
     const [isCreator, isAssignee, isAdmin, isAgent, isMember] = await Promise.all([
@@ -63,11 +64,11 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser(req);
-    const ticketId = params.id;
+    const { id: ticketId } = await params;
     const data = await req.json();
 
     // Check if user is admin, agent, creator, or assignee
@@ -164,11 +165,12 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser(req);
-    const ticketId = params.id;
+    
+    const { id: ticketId } = await params;
 
     // Only admins and creators can delete tickets
     const [isAdmin, isCreator] = await Promise.all([
