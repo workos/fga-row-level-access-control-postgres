@@ -16,6 +16,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "@workos-inc/node": "^7.36.0",
+    "cookie": "^0.7.0",
     "next": "^15.1.4",
     "react": "^18",
     "react-dom": "^18"
